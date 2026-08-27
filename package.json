@@ -33,7 +33,8 @@
   "scripts": {
     "test": "node --test test/reference.test.mjs",
     "check:reference": "node runner.mjs --canonical ./reference/jcs.mjs && node runner.mjs --signing-input ./reference/signing-input.mjs",
-    "gen": "node tools/gen-canonical.mjs && node tools/gen-signing-input.mjs"
+    "gen": "node tools/gen-canonical.mjs && node tools/gen-signing-input.mjs",
+    "check:estate": "node tools/check-estate.mjs"
   },
   "keywords": [
     "rfc8785",

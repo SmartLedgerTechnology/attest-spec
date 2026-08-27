@@ -9,33 +9,47 @@ without asking us anything.
 - [`vectors/`](./vectors) — machine-checkable conformance cases
 - [`reference/`](./reference) — the tie-breaking reference implementation
 - `runner.mjs` — checks any implementation against the vectors
+- `tools/check-estate.mjs` — sweeps every canonicalizer in the estate at once
 
 Zero dependencies, by design. Every package in the estate depends on this one, so it
 can depend on none of them.
 
 ## Why this exists
 
-A signature is only meaningful over bytes both parties can reproduce. We ship five
-canonicalizers. Three of them disagree with the other two, and the disagreement is
-silent — it produces valid-looking signatures that a conformant verifier in another
-language rejects.
+A signature is only meaningful over bytes both parties can reproduce. When this
+repository was created the estate shipped five canonicalizers, three of them
+non-conformant, and the disagreement was silent: valid-looking signatures that a
+conformant verifier in another language rejects.
 
-Running the vectors against what we currently ship:
+Worse was the inversion. The two correct implementations were the two nobody could
+reach, so three packages independently reimplemented the broken form — it was the
+one they could see.
 
-| Implementation | Score | Reachable as |
-|---|---|---|
-| `bsv/lib/util/jcs.js` | **11/11** | private — not exported |
-| `notaryhash/src/canonical/jcs.ts` | conformant | package-internal |
-| `bsv.canonicalizeClaim` → `LTP.Claim.canonicalize` | **8/11** | **public API**, typed in `bsv.d.ts` |
-| `vg-csv-sign-server/src/lib/canonical.js` | 8/11 (same form) | all VG signing |
-| `@smartledger/envelope` v1.0.0 | **2/11** | published npm package |
+```
+npm run check:estate
+```
 
-The two correct implementations are the two nobody can reach. That inversion is the
-first work item in the build order, and this repository is what proves when it's fixed.
+| Implementation | Then | Now | Notes |
+|---|---|---|---|
+| `bsv/lib/util/jcs.js` | 11/11, private | **11/11, public** | `@smartledger/bsv/jcs` from 9.2.0 |
+| `LTP.Claim.canonicalize(…, JCS)` | did not exist | **11/11** | opt-in; becomes the default in 10.0.0 |
+| `LTP.Claim.canonicalize(…, LEGACY)` | 8/11, the only option | 8/11, opt-in | non-conformant by design, kept so existing claim hashes still reproduce |
+| `@smartledger/envelope` | **2/11** | **11/11** | v2.0.0; v1 envelopes still verify byte for byte |
+| `vg-csv-sign-server/canonical.js` | 8/11 | 8/11, pinned | migration blocked on three conditions, documented in that file's header |
+| `notaryhash/src/canonical/jcs.ts` | conformant | conformant | TypeScript source; checked by its own suite |
 
-`@smartledger/envelope` scores 2/11 because it signs
-`JSON.stringify({ payload, meta })` with no canonicalization at all — key order comes
-from whatever the caller or the wire produced.
+`@smartledger/envelope` scored 2/11 because it signed
+`JSON.stringify({ payload, meta })` with no canonicalization at all. That made a
+signature depend on the insertion order of **ordinary string keys** — no exotic
+input required. It survived in practice only because signing and verifying the same
+object graph agree, and a JSON round-trip through V8 happens to be stable; it fails
+as soon as a value is rebuilt by a different code path — read from a database,
+mapped through a different shape, or produced by a non-JavaScript implementation.
+
+The two implementations still scoring 8/11 are deliberate and marked as such: both
+are reachable only by explicit opt-in, both are needed so existing hashes still
+reproduce, and `check:estate` fails the build only for implementations that are
+supposed to be conformant.
 
 ## Use
 

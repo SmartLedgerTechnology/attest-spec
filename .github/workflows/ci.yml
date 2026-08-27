@@ -26,6 +26,10 @@ jobs:
       - name: Reference implementation is conformant
         run: npm run check:reference
 
+      # Not the estate sweep: tools/check-estate.mjs needs the sibling repos
+      # checked out and built, which CI here does not have. It is a local
+      # command, run when a canonicalizer changes anywhere in the estate.
+
       # The vectors are generated from the reference, so a drifted vector file
       # would still pass the runner. Regenerating and diffing is what catches a
       # vector edited by hand.
