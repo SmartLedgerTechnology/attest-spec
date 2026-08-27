@@ -1,0 +1,172 @@
+{
+  "vectorSet": "canonical",
+  "spec": "RFC 8785 (JSON Canonicalization Scheme)",
+  "version": 1,
+  "note": "expected is the exact canonical JSON string. legacyDiffers records whether the non-conformant sort-then-rebuild form produces different bytes for this input; it is documentation, not a requirement.",
+  "cases": [
+    {
+      "name": "integer-like-keys-reorder",
+      "note": "The load-bearing case. Sort-then-rebuild loses the sort; direct serialization keeps it.",
+      "input": {
+        "2": "two",
+        "10": "ten",
+        "b": 1,
+        "a": 2
+      },
+      "expected": "{\"10\":\"ten\",\"2\":\"two\",\"a\":2,\"b\":1}",
+      "legacyDiffers": true
+    },
+    {
+      "name": "integer-like-keys-nested",
+      "note": "Same defect one level down, where it is easier to miss in review.",
+      "input": {
+        "set": {
+          "1": "z",
+          "9": "y",
+          "10": "x"
+        },
+        "name": "n"
+      },
+      "expected": "{\"name\":\"n\",\"set\":{\"1\":\"z\",\"10\":\"x\",\"9\":\"y\"}}",
+      "legacyDiffers": true
+    },
+    {
+      "name": "vg-set-map-keyed-by-card-number",
+      "note": "How this reaches Verified Grades in practice: any map keyed by card number, set number, slot index or year.",
+      "input": {
+        "setId": "base-1999",
+        "cards": {
+          "1": {
+            "grade": 10
+          },
+          "2": {
+            "grade": 8
+          },
+          "10": {
+            "grade": 9.5
+          }
+        }
+      },
+      "expected": "{\"cards\":{\"1\":{\"grade\":10},\"10\":{\"grade\":9.5},\"2\":{\"grade\":8}},\"setId\":\"base-1999\"}",
+      "legacyDiffers": true
+    },
+    {
+      "name": "array-order-preserved",
+      "note": "Array order is meaningful and is never sorted.",
+      "input": {
+        "z": [
+          3,
+          1,
+          2
+        ],
+        "a": 1
+      },
+      "expected": "{\"a\":1,\"z\":[3,1,2]}",
+      "legacyDiffers": false
+    },
+    {
+      "name": "key-sort-is-code-unit-not-locale",
+      "note": "UTF-16 code unit order, so uppercase sorts before underscore, which sorts before lowercase. A locale-aware sort fails this.",
+      "input": {
+        "a": 1,
+        "A": 2,
+        "b": 3,
+        "B": 4,
+        "_": 5
+      },
+      "expected": "{\"A\":2,\"B\":4,\"_\":5,\"a\":1,\"b\":3}",
+      "legacyDiffers": false
+    },
+    {
+      "name": "empty-containers",
+      "note": "Empty object, empty array and empty string are all representable and distinct.",
+      "input": {
+        "o": {},
+        "a": [],
+        "s": ""
+      },
+      "expected": "{\"a\":[],\"o\":{},\"s\":\"\"}",
+      "legacyDiffers": false
+    },
+    {
+      "name": "numbers-ecmascript-tostring",
+      "note": "JCS mandates ECMAScript Number::toString: 1.0 emits as 1, negative zero as 0, 1e21 as 1e+21.",
+      "input": {
+        "a": 1,
+        "b": -0.5,
+        "c": 1e+21,
+        "d": 0,
+        "e": 1,
+        "f": 0
+      },
+      "expected": "{\"a\":1,\"b\":-0.5,\"c\":1e+21,\"d\":0,\"e\":1,\"f\":0}",
+      "legacyDiffers": false
+    },
+    {
+      "name": "nested-mixed",
+      "note": "Objects inside arrays inside objects; each object sorted, each array left alone.",
+      "input": {
+        "b": [
+          {
+            "y": 1,
+            "x": 2
+          },
+          [
+            1,
+            {
+              "n": null
+            }
+          ]
+        ],
+        "a": {
+          "d": true,
+          "c": false
+        }
+      },
+      "expected": "{\"a\":{\"c\":false,\"d\":true},\"b\":[{\"x\":2,\"y\":1},[1,{\"n\":null}]]}",
+      "legacyDiffers": false
+    },
+    {
+      "name": "unicode-and-escapes",
+      "note": "Minimal escaping, non-ASCII emitted literally, astral characters intact.",
+      "input": {
+        "tab": "a\tb",
+        "quote": "a\"b",
+        "emoji": "🃏",
+        "ae": "ä",
+        "z": "z"
+      },
+      "expected": "{\"ae\":\"ä\",\"emoji\":\"🃏\",\"quote\":\"a\\\"b\",\"tab\":\"a\\tb\",\"z\":\"z\"}",
+      "legacyDiffers": false
+    },
+    {
+      "name": "numeric-string-values-are-not-keys",
+      "note": "Guards against an over-eager fix: the defect is about keys, so numeric string VALUES must not be touched.",
+      "input": {
+        "a": "10",
+        "b": "2"
+      },
+      "expected": "{\"a\":\"10\",\"b\":\"2\"}",
+      "legacyDiffers": false
+    },
+    {
+      "name": "vg-grade-payload-shape",
+      "note": "A realistic Grade payload, to pin the shape the envelope actually carries.",
+      "input": {
+        "uidCommitment": "9f2c",
+        "saltId": "s-1",
+        "grade": {
+          "score": 9.5,
+          "rubric": "1.4.0"
+        },
+        "createdAt": "2026-08-27T14:02:11Z",
+        "asset": {
+          "cardNumber": "10",
+          "setNumber": "2"
+        }
+      },
+      "expected": "{\"asset\":{\"cardNumber\":\"10\",\"setNumber\":\"2\"},\"createdAt\":\"2026-08-27T14:02:11Z\",\"grade\":{\"rubric\":\"1.4.0\",\"score\":9.5},\"saltId\":\"s-1\",\"uidCommitment\":\"9f2c\"}",
+      "legacyDiffers": false
+    }
+  ]
+}

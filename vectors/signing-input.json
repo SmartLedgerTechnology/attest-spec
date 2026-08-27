@@ -1,0 +1,240 @@
+{
+  "vectorSet": "signing-input",
+  "spec": "SPEC.md §6.1",
+  "version": 1,
+  "note": "expected is the lowercase hex SHA-256 of JCS(payload) || 0x00 || JCS(references) || 0x00 || JCS({v,type}). Envelopes carry signatures/anchor in some cases deliberately; they must not affect the digest.",
+  "cases": [
+    {
+      "name": "grade-two-captures",
+      "note": "Canonical Grade envelope with both faces referenced.",
+      "envelope": {
+        "v": "vg-attest/2",
+        "type": "Grade",
+        "payload": {
+          "asset": {
+            "cardNumber": "10",
+            "setNumber": "2"
+          },
+          "grade": {
+            "score": 9.5,
+            "rubric": "1.4.0"
+          },
+          "uidCommitment": "9f2c",
+          "saltId": "s-1",
+          "createdAt": "2026-08-27T14:02:11Z"
+        },
+        "references": [
+          {
+            "type": "Capture",
+            "face": "front",
+            "hash": "sha256:aa"
+          },
+          {
+            "type": "Capture",
+            "face": "back",
+            "hash": "sha256:bb"
+          }
+        ]
+      },
+      "expected": "8ce7a25f938d818144813d22778174acecb8ba9e15d012b192b9a1961a3a720c"
+    },
+    {
+      "name": "signatures-and-anchor-excluded",
+      "note": "Same envelope carrying signatures and an anchor. MUST produce the identical digest as grade-two-captures — this is what makes later countersignature possible.",
+      "envelope": {
+        "v": "vg-attest/2",
+        "type": "Grade",
+        "payload": {
+          "asset": {
+            "cardNumber": "10",
+            "setNumber": "2"
+          },
+          "grade": {
+            "score": 9.5,
+            "rubric": "1.4.0"
+          },
+          "uidCommitment": "9f2c",
+          "saltId": "s-1",
+          "createdAt": "2026-08-27T14:02:11Z"
+        },
+        "references": [
+          {
+            "type": "Capture",
+            "face": "front",
+            "hash": "sha256:aa"
+          },
+          {
+            "type": "Capture",
+            "face": "back",
+            "hash": "sha256:bb"
+          }
+        ],
+        "signatures": [
+          {
+            "role": "kiosk",
+            "did": "did:smartledger:02a1",
+            "sig": "zz",
+            "mode": "auto"
+          }
+        ],
+        "anchor": {
+          "certificate": {
+            "payloadHash": "ff"
+          }
+        }
+      },
+      "expected": "8ce7a25f938d818144813d22778174acecb8ba9e15d012b192b9a1961a3a720c"
+    },
+    {
+      "name": "reference-order-is-significant",
+      "note": "References are an array, so front/back order is part of the signed bytes. Differs from grade-two-captures.",
+      "envelope": {
+        "v": "vg-attest/2",
+        "type": "Grade",
+        "payload": {
+          "asset": {
+            "cardNumber": "10",
+            "setNumber": "2"
+          },
+          "grade": {
+            "score": 9.5,
+            "rubric": "1.4.0"
+          },
+          "uidCommitment": "9f2c",
+          "saltId": "s-1",
+          "createdAt": "2026-08-27T14:02:11Z"
+        },
+        "references": [
+          {
+            "type": "Capture",
+            "face": "back",
+            "hash": "sha256:bb"
+          },
+          {
+            "type": "Capture",
+            "face": "front",
+            "hash": "sha256:aa"
+          }
+        ]
+      },
+      "expected": "39a22b2540731ffd4471c949974e4021e50d4969ab77b7afdde6b6ce8effa0eb"
+    },
+    {
+      "name": "domain-separation-grade-vs-override",
+      "note": "Byte-identical payload and references, different type. MUST differ from grade-two-captures, or a Grade signature could be replayed as an override.",
+      "envelope": {
+        "v": "vg-attest/2",
+        "type": "GradeOverride",
+        "payload": {
+          "asset": {
+            "cardNumber": "10",
+            "setNumber": "2"
+          },
+          "grade": {
+            "score": 9.5,
+            "rubric": "1.4.0"
+          },
+          "uidCommitment": "9f2c",
+          "saltId": "s-1",
+          "createdAt": "2026-08-27T14:02:11Z"
+        },
+        "references": [
+          {
+            "type": "Capture",
+            "face": "front",
+            "hash": "sha256:aa"
+          },
+          {
+            "type": "Capture",
+            "face": "back",
+            "hash": "sha256:bb"
+          }
+        ]
+      },
+      "expected": "e72f4e07f2aaf9efc674f8a2929276a69c2b8c89c4d9d5ee51f9597dfc5b8ebd"
+    },
+    {
+      "name": "domain-separation-version",
+      "note": "Byte-identical payload and references, different envelope version. MUST differ.",
+      "envelope": {
+        "v": "vg-attest/3",
+        "type": "Grade",
+        "payload": {
+          "asset": {
+            "cardNumber": "10",
+            "setNumber": "2"
+          },
+          "grade": {
+            "score": 9.5,
+            "rubric": "1.4.0"
+          },
+          "uidCommitment": "9f2c",
+          "saltId": "s-1",
+          "createdAt": "2026-08-27T14:02:11Z"
+        },
+        "references": [
+          {
+            "type": "Capture",
+            "face": "front",
+            "hash": "sha256:aa"
+          },
+          {
+            "type": "Capture",
+            "face": "back",
+            "hash": "sha256:bb"
+          }
+        ]
+      },
+      "expected": "07afc0cbb1c727563c6e6c4b0b3129610d567c63868eae94f991160ab1d67d01"
+    },
+    {
+      "name": "capture-no-references",
+      "note": "A Capture envelope references nothing; the empty array still participates in the digest.",
+      "envelope": {
+        "v": "vg-attest/2",
+        "type": "Capture",
+        "payload": {
+          "stationId": "VG-KIOSK-0007",
+          "face": "front",
+          "mediaHash": "sha256:aa",
+          "capturedAt": "2026-08-27T14:02:09Z"
+        }
+      },
+      "expected": "f2fbc0179bbcf3187584375030f684e48c969c9516863e69fde0fdb4ae5ce8c5"
+    },
+    {
+      "name": "payload-key-order-irrelevant",
+      "note": "Same payload with keys supplied in a different source order. MUST equal grade-two-captures — the whole point of canonicalizing.",
+      "envelope": {
+        "type": "Grade",
+        "v": "vg-attest/2",
+        "references": [
+          {
+            "type": "Capture",
+            "face": "front",
+            "hash": "sha256:aa"
+          },
+          {
+            "type": "Capture",
+            "face": "back",
+            "hash": "sha256:bb"
+          }
+        ],
+        "payload": {
+          "createdAt": "2026-08-27T14:02:11Z",
+          "saltId": "s-1",
+          "uidCommitment": "9f2c",
+          "grade": {
+            "rubric": "1.4.0",
+            "score": 9.5
+          },
+          "asset": {
+            "setNumber": "2",
+            "cardNumber": "10"
+          }
+        }
+      },
+      "expected": "8ce7a25f938d818144813d22778174acecb8ba9e15d012b192b9a1961a3a720c"
+    }
+  ]
+}

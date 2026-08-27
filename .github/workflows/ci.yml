@@ -1,0 +1,36 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  conformance:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node: ['20.19', '22']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+
+      # No install step: this package has no dependencies, and keeping it that
+      # way is the point. Every other package in the estate depends on this one,
+      # so it can depend on none of them.
+      - name: Reference and vector self-checks
+        run: npm test
+
+      - name: Reference implementation is conformant
+        run: npm run check:reference
+
+      # The vectors are generated from the reference, so a drifted vector file
+      # would still pass the runner. Regenerating and diffing is what catches a
+      # vector edited by hand.
+      - name: Vectors are reproducible from the generators
+        run: |
+          npm run gen
+          git diff --exit-code -- vectors/ \
+            || (echo "::error::vectors/ is out of sync with tools/ — run npm run gen and commit" && exit 1)

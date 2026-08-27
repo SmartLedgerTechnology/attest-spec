@@ -1,0 +1,57 @@
+{
+  "name": "@smartledger/attest-vectors",
+  "version": "0.1.0",
+  "description": "Normative specification and conformance vectors for the SmartLedger multi-party attestation envelope. Zero dependencies.",
+  "type": "module",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SmartLedgerTechnology/attest-spec.git"
+  },
+  "homepage": "https://github.com/SmartLedgerTechnology/attest-spec#readme",
+  "bugs": {
+    "url": "https://github.com/SmartLedgerTechnology/attest-spec/issues"
+  },
+  "exports": {
+    "./canonical": "./vectors/canonical.json",
+    "./signing-input": "./vectors/signing-input.json",
+    "./reference/jcs": "./reference/jcs.mjs",
+    "./reference/signing-input": "./reference/signing-input.mjs",
+    "./package.json": "./package.json"
+  },
+  "bin": {
+    "attest-vectors": "./runner.mjs"
+  },
+  "files": [
+    "vectors",
+    "reference",
+    "runner.mjs",
+    "SPEC.md",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/reference.test.mjs",
+    "check:reference": "node runner.mjs --canonical ./reference/jcs.mjs && node runner.mjs --signing-input ./reference/signing-input.mjs",
+    "gen": "node tools/gen-canonical.mjs && node tools/gen-signing-input.mjs"
+  },
+  "keywords": [
+    "rfc8785",
+    "jcs",
+    "canonicalization",
+    "conformance",
+    "attestation",
+    "signatures"
+  ],
+  "author": {
+    "name": "Gregory Ward (Codenlighten)",
+    "email": "tech@smartledger.technology",
+    "url": "https://codenlighten.org"
+  },
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
