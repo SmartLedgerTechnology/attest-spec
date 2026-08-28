@@ -424,6 +424,42 @@ property. A verdict therefore carries retrieval alongside assurance:
   declaration says and wherever the bytes finally came from. An envelope inscribed on
   chain but locatable only through the issuer's resolver is `hosted`: the dependency
   on the issuer is unchanged by where the bytes live.
+
+An **operator-controlled step** is one requiring a *response* from the operator.
+
+Data already in the holder's possession is not operator-controlled, whatever its
+format: bytes on a chip, a serial printed on the item, a QR code. What matters is
+whether a chain-resolvable identity can be recovered from it **without dereferencing
+anything**. The test is mechanical — take the network away, leave the holder only
+what they physically have, and see whether an outpoint falls out.
+
+Format does not decide this, and conflating the two loses the distinction §8 exists
+to make:
+
+| On the tag | Network-off | Profile it supports |
+| --- | --- | --- |
+| `https://issuer.example/twin/<txid>_<vout>` | outpoint recoverable | `inscribed` |
+| `https://issuer.example/twin/<opaque-id>` | nothing recoverable | `hosted` |
+
+The first is a URL and is self-sufficient; the second is a URL and is not. They have
+completely different survival properties, and a verdict that cannot separate them is
+not reporting anything useful.
+
+This does not weaken the rule, because §8.4's first clause still governs: a verifier
+reports the profile **it used**. A verifier that parses the outpoint and fetches from
+a gateway used `inscribed`. One that dereferenced the issuer's URL used `hosted`,
+even though the outpoint was sitting in the string it dereferenced. So a deployment
+whose resolver does the work in practice will see `hosted` verdicts despite a
+self-sufficient tag — which is the intended pressure, and the reason blessing this
+format does not invite tags that merely look self-sufficient.
+
+> **Tag payloads are usually permanent.** A builder that falls back to a
+> non-chain-resolvable identifier when the outpoint is unavailable — `outpoint ?? id`
+> — produces tags that can never be resolved without the issuer, and chips are
+> commonly locked after writing. Such a fallback SHOULD fail the issuance instead. In
+> the deployment that prompted this clause the fallback existed and never fired: all
+> 816 issued tags carry an outpoint, and none carries a bare internal identifier. That
+> was luck rather than design, and it is the kind of luck worth removing.
 - `capture-bound` combined with `hosted` is an honest and useful verdict. It says the
   grade is bound to a physical capture *and* that reading it later depends on the
   issuer. A marketplace pricing durability needs both halves.
@@ -464,6 +500,11 @@ envelope MUST be followable by the holder without the issuer, or the deployment 
 NOT claim the `inscribed` profile.** By §8.4 it is `hosted`, and honestly so: an
 envelope on chain that can only be found by asking the issuer leaves the holder as
 dependent as one stored on the issuer's disk.
+
+"Without the issuer" is as §8.4 defines it: no *response* from the issuer is needed.
+A locator the holder already physically has satisfies this whatever its format, so a
+chip carrying an issuer URL with the outpoint embedded in it qualifies, and one
+carrying an opaque identifier does not.
 
 This specification does not define what a thing is, so it does not define the
 mechanism. What it requires is that the mechanism exist and not route through the
