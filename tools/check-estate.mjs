@@ -78,11 +78,15 @@ const IMPLEMENTATIONS = [
     load: (p) => createRequire(import.meta.url)(p).canonicalize,
   },
   {
-    name: 'notaryhash — src/canonical/jcs.ts (source, not built)',
-    path: 'notaryhash2026/src/canonical/jcs.ts',
-    mustPass: false,
-    expect: 'TypeScript source; check it via its own suite until a build is present',
-    load: () => { throw new Error('TypeScript source cannot be imported directly'); },
+    // Pointed at the BUILD, not the source. Aimed at the .ts this row was
+    // permanently UNLOADABLE, so the sweep reported success with one member never
+    // actually measured — the quietest way for a conformance check to be wrong.
+    // Measured 2026-08-28: 11/11. It was conformant all along and nobody could see it.
+    name: 'notaryhash — dist/src/canonical/jcs.js',
+    path: 'notaryhash2026/dist/src/canonical/jcs.js',
+    mustPass: true,
+    hint: 'cd notaryhash2026 && npm run build',
+    load: (p) => createRequire(import.meta.url)(p).canonicalize,
   },
 ];
 
