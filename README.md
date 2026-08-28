@@ -22,7 +22,7 @@ non-conformant, and the disagreement was silent: valid-looking signatures that a
 conformant verifier in another language rejects.
 
 Worse was the inversion. The two correct implementations were the two nobody could
-reach, so three packages independently reimplemented the broken form — it was the
+reach, so several packages independently reimplemented the broken form — it was the
 one they could see.
 
 ```
@@ -35,7 +35,7 @@ npm run check:estate
 | `LTP.Claim.canonicalize(…, JCS)` | did not exist | **11/11** | opt-in; becomes the default in 10.0.0 |
 | `LTP.Claim.canonicalize(…, LEGACY)` | 8/11, the only option | 8/11, opt-in | non-conformant by design, kept so existing claim hashes still reproduce |
 | `@smartledger/envelope` | **2/11** | **11/11, published** | v2.0.0 on npm; v1 envelopes still verify byte for byte |
-| `vg-csv-sign-server/canonical.js` | 8/11 | 8/11, pinned | migration blocked on the conditions in that file's header |
+| an internal signing service | 8/11 | 8/11, pinned | migration gated on conditions recorded in that repo |
 | `notaryhash/src/canonical/jcs.ts` | conformant | conformant | TypeScript source; checked by its own suite |
 
 Verified against the published tarballs, not the working tree — `@smartledger/bsv@9.2.0`

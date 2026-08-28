@@ -82,14 +82,30 @@ const IMPLEMENTATIONS = [
     expect: 'TypeScript source; check it via its own suite until a build is present',
     load: () => { throw new Error('TypeScript source cannot be imported directly'); },
   },
-  {
-    name: 'vg-csv-sign-server — src/lib/canonical.js',
-    path: 'vg-csv-sign-server/src/lib/canonical.js',
-    mustPass: false,
-    expect: 'non-conformant, pinned deliberately; see the header of that file',
-    load: (p) => createRequire(import.meta.url)(p).canonicalize,
-  },
 ];
+
+/**
+ * Implementations that are not part of the published estate.
+ *
+ * Kept out of the list above so this file stays useful to anyone implementing the
+ * spec, and loaded from `.estate.local.json` when present so an operator can sweep
+ * their own unpublished services without that inventory living here. Shape:
+ *
+ *   { "implementations": [ { "name": …, "path": …, "mustPass": false,
+ *                            "expect": …, "export": "canonicalize" } ] }
+ */
+const LOCAL_MANIFEST = join(HERE, '..', '.estate.local.json');
+if (existsSync(LOCAL_MANIFEST)) {
+  for (const entry of JSON.parse(readFileSync(LOCAL_MANIFEST, 'utf8')).implementations ?? []) {
+    IMPLEMENTATIONS.push({
+      ...entry,
+      load: (p) => {
+        const mod = createRequire(import.meta.url)(p);
+        return entry.export ? mod[entry.export] : mod;
+      },
+    });
+  }
+}
 
 const vectors = JSON.parse(readFileSync(join(HERE, '..', 'vectors', 'canonical.json'), 'utf8'));
 

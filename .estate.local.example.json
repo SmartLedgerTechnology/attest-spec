@@ -1,0 +1,12 @@
+{
+  "_comment": "Copy to .estate.local.json (gitignored) to sweep unpublished or internal implementations alongside the published ones.",
+  "implementations": [
+    {
+      "name": "my-service — src/lib/canonical.js",
+      "path": "my-service/src/lib/canonical.js",
+      "mustPass": false,
+      "expect": "why this one is allowed to be non-conformant, if it is",
+      "export": "canonicalize"
+    }
+  ]
+}
