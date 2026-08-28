@@ -35,7 +35,7 @@ npm run check:estate
 | `LTP.Claim.canonicalize(…, JCS)` | did not exist | **11/11** | opt-in; becomes the default in 10.0.0 |
 | `LTP.Claim.canonicalize(…, LEGACY)` | 8/11, the only option | 8/11, opt-in | non-conformant by design, kept so existing claim hashes still reproduce |
 | `@smartledger/envelope` | **2/11** | **11/11, published** | v2.0.0 on npm; v1 envelopes still verify byte for byte |
-| an internal signing service | 8/11 | 8/11, pinned | migration gated on conditions recorded in that repo |
+| an internal signing service | 8/11 | **11/11** | migrated to `@smartledger/bsv/jcs`; measured agreement on every payload first |
 | `notaryhash/src/canonical/jcs.ts` | conformant | conformant | TypeScript source; checked by its own suite |
 
 Verified against the published tarballs, not the working tree — `@smartledger/bsv@9.2.0`
@@ -50,10 +50,12 @@ object graph agree, and a JSON round-trip through V8 happens to be stable; it fa
 as soon as a value is rebuilt by a different code path — read from a database,
 mapped through a different shape, or produced by a non-JavaScript implementation.
 
-The two implementations still scoring 8/11 are deliberate and marked as such: both
-are reachable only by explicit opt-in, both are needed so existing hashes still
-reproduce, and `check:estate` fails the build only for implementations that are
-supposed to be conformant.
+One implementation still scores 8/11 deliberately: the legacy claim form, reachable
+only by explicit opt-in and needed so hashes computed before the migration still
+reproduce. `check:estate` fails the build only for implementations that are supposed
+to be conformant, so that one is recorded rather than hidden.
+
+Everything else in the estate is conformant.
 
 ### Upgrade order matters
 
