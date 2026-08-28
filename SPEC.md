@@ -309,10 +309,29 @@ Every envelope MUST therefore declare how it can be retrieved:
 
 ```jsonc
 "retrieval": {
-  "profile": "inscribed",              // §8.2
-  "ref": "<txid>o<index>"              // profile-specific locator
+  "profile": "inscribed",                       // §8.2
+  "ref": { "txid": "…", "vout": 0 }             // profile-specific locator
 }
 ```
+
+For `inscribed`, the locator is an outpoint carried as a **structured pair**, not a
+string. Earlier drafts wrote `<txid>o<index>` — a separator this document invented.
+Measured against a real inscription on the two gateways serving BSV ordinals today:
+
+```
+<txid>_0    gorillapool 200    ordfs 200
+<txid>o0    gorillapool 500    ordfs 400     ← the form this spec used to specify
+<txid>:0    gorillapool 500    ordfs 200
+```
+
+The invented form fails on both. Since §8.5 exists so the capture chain is
+traversable from chain data alone, a locator that errors on every gateway defeats
+the section entirely.
+
+Rather than pin a separator, carry the parts. Implementations then need no locator
+parser and cannot silently disagree about one. When a string is required — building
+a gateway URL — `<txid>_<vout>` is the form both current gateways accept, but that
+is a rendering detail, not part of the format.
 
 ### 8.2 Profiles
 
@@ -331,7 +350,19 @@ Implementations SHOULD use `inscribed` where the attested item can change hands.
 ~5–6 KB an envelope with an ML-DSA-65 signature costs roughly 600 satoshis at 100
 sat/KB, which is small against the value of an item whose provenance is the reason
 it has value. A 16,916-byte document has been inscribed and served from two
-independent gateways for 859 satoshis, so the cost is measured rather than estimated.
+independent gateways for 859 satoshis — though that was paid at 50 sat/KB, so the
+like-for-like figure at 100 is roughly 1,700. The envelope estimate above is the one
+to plan against; the inscription is cited as evidence that this works in practice, not
+as a price comparison.
+
+An inscribed envelope SHOULD be written to its own satoshi rather than re-inscribed
+onto the satoshi carrying the attested item. Correctness does not depend on this —
+outpoints are immutable, so a locator stays valid either way — but a satoshi with
+several inscriptions has no canonical rendering: a wallet showing the origin and one
+showing the current tip both display something defensible, and neither is wrong. An
+envelope added as a further inscription can become the tip, so a generic wallet would
+render it where a holder expects the item. This has been observed on a backfill of 808
+cards. It costs nothing to avoid at mint and is not correctable afterwards.
 
 Inscription MUST NOT be mandatory. The payload is opaque to this layer (§2) and may
 be confidential — an inventory manifest, a ballot, a medical attestation. Publishing
@@ -353,6 +384,21 @@ trust in an operator that §7.1 removes.
 
 A mismatch MUST yield `indeterminate`, never `invalid` — the envelope may be intact at
 its source and wrong only in this copy.
+
+**Where there is no anchor.** `anchor` is present once anchored (§2), so an envelope
+may legitimately have none — a `held` attestation that was never submitted, or one
+whose anchor is still unmined. There is then no anchored digest, and the requirement
+above has no referent: it is unsatisfiable rather than unsatisfied. A verifier MUST
+NOT treat that as a mismatch.
+
+Integrity is not lost in that case, only shifted. `signingInput` is computed from the
+retrieved bytes, so a payload altered in transit changes it and every signature over
+it fails — signature verification does the work the digest comparison would have done.
+What is lost is time: §6 cannot produce a height, so `authorized()` is undefined.
+
+An unanchored envelope therefore yields `unconfirmed`, with a reason distinguishing it
+from an anchor that is merely unmined. Its signatures MAY still be reported as valid;
+its authorization MUST NOT be.
 
 ### 8.4 Retrieval affects what a verdict may claim
 
@@ -378,7 +424,8 @@ Where a referenced envelope (§2, §4) is `inscribed`, its `EnvelopeReference` S
 carry the outpoint as well as the hash:
 
 ```jsonc
-{ "type": "Capture", "face": "front", "hash": "sha256:…", "ref": "<txid>o<index>" }
+{ "type": "Capture", "face": "front", "hash": "sha256:…",
+  "ref": { "txid": "…", "vout": 0 } }
 ```
 
 The hash remains the binding commitment; the locator is a convenience. With it, the
