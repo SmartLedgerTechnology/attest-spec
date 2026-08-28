@@ -1,5 +1,5 @@
 /**
- * Reference construction of the bytes every signer signs — SPEC §6.1.
+ * Reference construction of the bytes every signer signs — SPEC §2.1.
  *
  *   signingInput = SHA-256( JCS(payload) ‖ 0x00 ‖ JCS(references) ‖ 0x00 ‖ JCS(context) )
  *   context      = { v, type }

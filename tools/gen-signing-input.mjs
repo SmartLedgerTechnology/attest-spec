@@ -25,6 +25,10 @@ const cases = [
      signatures: [{ role: 'kiosk', did: 'did:smartledger:02a1', sig: 'zz', mode: 'auto' }],
      anchor: { certificate: { payloadHash: 'ff' } } }],
 
+  ['retrieval-excluded',
+   'Same envelope carrying a retrieval block. MUST equal grade-two-captures — where an envelope can be obtained may change over its life without altering what was attested.',
+   { ...grade, retrieval: { profile: 'inscribed' } }],
+
   ['reference-order-is-significant',
    'References are an array, so front/back order is part of the signed bytes. Differs from grade-two-captures.',
    { ...grade, references: [grade.references[1], grade.references[0]] }],
@@ -69,6 +73,7 @@ for (const c of built) {
 // Assertions the vector set exists to enforce.
 const must = [
   ['signatures/anchor excluded', byName['signatures-and-anchor-excluded'] === base],
+  ['retrieval excluded', byName['retrieval-excluded'] === base],
   ['payload key order irrelevant', byName['payload-key-order-irrelevant'] === base],
   ['reference order significant', byName['reference-order-is-significant'] !== base],
   ['type domain-separated', byName['domain-separation-grade-vs-override'] !== base],
@@ -80,7 +85,7 @@ for (const [label, pass] of must) { if (!pass) ok = false; console.log((pass ? '
 
 writeFileSync(new URL('../vectors/signing-input.json', import.meta.url),
   JSON.stringify({
-    vectorSet: 'signing-input', spec: 'SPEC.md §6.1', version: 1,
+    vectorSet: 'signing-input', spec: 'SPEC.md §2.1', version: 1,
     note: 'expected is the lowercase hex SHA-256 of JCS(payload) || 0x00 || JCS(references) || 0x00 || JCS({v,type}). Envelopes carry signatures/anchor in some cases deliberately; they must not affect the digest.',
     cases: built,
   }, null, 2) + '\n');

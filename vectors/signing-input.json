@@ -1,6 +1,6 @@
 {
   "vectorSet": "signing-input",
-  "spec": "SPEC.md §6.1",
+  "spec": "SPEC.md §2.1",
   "version": 1,
   "note": "expected is the lowercase hex SHA-256 of JCS(payload) || 0x00 || JCS(references) || 0x00 || JCS({v,type}). Envelopes carry signatures/anchor in some cases deliberately; they must not affect the digest.",
   "cases": [
@@ -81,6 +81,43 @@
           "certificate": {
             "payloadHash": "ff"
           }
+        }
+      },
+      "expected": "8ce7a25f938d818144813d22778174acecb8ba9e15d012b192b9a1961a3a720c"
+    },
+    {
+      "name": "retrieval-excluded",
+      "note": "Same envelope carrying a retrieval block. MUST equal grade-two-captures — where an envelope can be obtained may change over its life without altering what was attested.",
+      "envelope": {
+        "v": "vg-attest/2",
+        "type": "Grade",
+        "payload": {
+          "asset": {
+            "cardNumber": "10",
+            "setNumber": "2"
+          },
+          "grade": {
+            "score": 9.5,
+            "rubric": "1.4.0"
+          },
+          "uidCommitment": "9f2c",
+          "saltId": "s-1",
+          "createdAt": "2026-08-27T14:02:11Z"
+        },
+        "references": [
+          {
+            "type": "Capture",
+            "face": "front",
+            "hash": "sha256:aa"
+          },
+          {
+            "type": "Capture",
+            "face": "back",
+            "hash": "sha256:bb"
+          }
+        ],
+        "retrieval": {
+          "profile": "inscribed"
         }
       },
       "expected": "8ce7a25f938d818144813d22778174acecb8ba9e15d012b192b9a1961a3a720c"

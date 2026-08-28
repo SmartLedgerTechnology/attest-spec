@@ -64,9 +64,11 @@ implementation is `reference/jcs.mjs`.
 
   "payload":    { },           // REQUIRED. Opaque to this layer.
   "references": [              // REQUIRED for types that name them in §4.
-    { "type": "Capture", "face": "front", "hash": "sha256:…" }
+    { "type": "Capture", "face": "front", "hash": "sha256:…",
+      "ref": { "txid": "…", "vout": 0 } }        // SHOULD, per §8.5
   ],
 
+  "retrieval":  { },           // REQUIRED. How to obtain this envelope — §8.1.
   "signatures": [ ],           // See §3.
   "anchor":     { }            // notaryhash Certificate, once anchored.
 }
@@ -84,7 +86,9 @@ signingInput = SHA-256( JCS(payload) ‖ 0x00 ‖ JCS(references) ‖ 0x00 ‖ J
 context      = { v, type }
 ```
 
-`signatures` and `anchor` are excluded. Consequences an implementation MUST preserve:
+`signatures`, `anchor` and `retrieval` are excluded — the digest covers `payload`,
+`references` and `context`, and nothing else. Consequences an implementation MUST
+preserve:
 
 - **Countersignable.** A party may append a signature later without re-serializing the
   envelope; existing signatures remain valid.
@@ -97,6 +101,12 @@ When absent it is the empty array, which still participates in the digest.
 
 The `0x00` separators are required. Without them, two different `(payload, references)`
 pairs could produce one digest. `0x00` cannot occur in canonical JSON output.
+
+`retrieval` is outside the digest deliberately. Where an envelope can be obtained may
+legitimately change over its life — a `hosted` URL moves, a `held` envelope is later
+inscribed — and none of that alters what was attested. Leaving it unsigned also costs
+nothing: a forged declaration cannot produce a false verdict, because §8.4 requires a
+verifier to report the profile it actually used rather than the one it was told.
 
 An implementation MUST pass every case in `vectors/signing-input.json`.
 
