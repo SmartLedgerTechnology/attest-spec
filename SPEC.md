@@ -1,6 +1,6 @@
 # Attestation envelope and delegated signing — normative specification
 
-**Status:** draft 0.2 · **Package:** `@smartledger/attest` · **Vectors:** `@smartledger/attest-vectors`
+**Status:** draft 0.3 · **Package:** `@smartledger/attest` · **Vectors:** `@smartledger/attest-vectors`
 
 This document is normative. It defines what an implementation must do to produce
 attestations the rest of the estate will verify, and to verify attestations others
@@ -128,8 +128,9 @@ An implementation MUST pass every case in `vectors/signing-input.json`.
 | `GradeOverride` | `bsv-ecdsa-secp256k1` + `ml-dsa-65`       |
 | `Issue`         | `bsv-ecdsa-secp256k1`                     |
 
-ML-DSA-65 signatures are ~3.3 KB. They belong in the off-chain envelope. Only the
-`signingInput` digest goes on chain.
+ML-DSA-65 signatures are ~3.3 KB. They belong in the envelope rather than the anchor;
+only the `signingInput` digest is anchored. Where the envelope itself lives is a
+separate question with its own requirements — see §8.
 
 ---
 
@@ -252,7 +253,8 @@ and MUST NOT substitute the current tip height.
 
 - MUST hold no private key and require no authentication to read.
 - MUST be a pure function of `(envelope, chain data, pinned roots)`.
-- MUST NOT consult any operator-controlled database to reach a verdict.
+- MUST NOT consult any operator-controlled database to reach a verdict, and MUST
+  recompute `signingInput` over any envelope it retrieves before using it (§8.3).
 - MUST fail closed: any unevaluable condition yields `indeterminate`.
 - Pinned roots MUST be published with the height at which each was first anchored.
 
@@ -260,6 +262,7 @@ and MUST NOT substitute the current tip height.
 {
   "verdict":    "valid" | "invalid" | "unconfirmed" | "indeterminate",
   "assurance":  "capture-bound" | "signed-multi" | "legacy-single-key",
+  "retrieval":  "inscribed" | "hosted" | "held" | "unavailable",   // §8.4
   "height":     838900,
   "chain":      [ { "role": "kiosk", "did": "…", "validAtHeight": true } ],
   "references": { "captures": "matched" },
@@ -284,7 +287,108 @@ The tiers MUST be published as part of the public verifier documentation.
 
 ---
 
-## 8. Conformance
+## 8. Envelope retrieval
+
+A verdict requires the envelope. §7.1 makes the *verification* independent of the
+issuer and says nothing about **obtaining** the document, which left the guarantee
+nominal: a verifier may not consult an operator-controlled database to reach a
+verdict, yet could be unable to get the envelope without one.
+
+This section closes that. It was raised against a real case — a graded trading card
+is a bearer instrument, and the holder who taps its chip in five years must be able
+to verify it whether or not the issuer still exists.
+
+### 8.1 The anchored digest is not enough
+
+An anchor proves a document existed and was authorized. It does not produce the
+document. Any deployment where the envelope is reachable only from the issuer has
+authorization that survives the issuer and content that does not, which for a
+transferable item is the same as no guarantee at all.
+
+Every envelope MUST therefore declare how it can be retrieved:
+
+```jsonc
+"retrieval": {
+  "profile": "inscribed",              // §8.2
+  "ref": "<txid>o<index>"              // profile-specific locator
+}
+```
+
+### 8.2 Profiles
+
+| Profile | Locator | The envelope is obtainable | Suitable for |
+| --- | --- | --- | --- |
+| `inscribed` | outpoint | by anyone, from any chain gateway, permanently | bearer instruments |
+| `hosted` | URL | while the issuer serves it | records with a custodian |
+| `held` | none | by whoever was given a copy | private attestations |
+
+`inscribed` means the envelope is written to the chain at its own outpoint. This is
+not a contradiction of §3.1: *off-chain* there distinguishes the envelope from the
+**anchor**, not from the chain. The digest anchors exactly as specified; the envelope
+sits separately and is fetched by anyone.
+
+Implementations SHOULD use `inscribed` where the attested item can change hands. At
+~5–6 KB an envelope with an ML-DSA-65 signature costs roughly 600 satoshis at 100
+sat/KB, which is small against the value of an item whose provenance is the reason
+it has value. A 16,916-byte document has been inscribed and served from two
+independent gateways for 859 satoshis, so the cost is measured rather than estimated.
+
+Inscription MUST NOT be mandatory. The payload is opaque to this layer (§2) and may
+be confidential — an inventory manifest, a ballot, a medical attestation. Publishing
+it permanently and irrevocably is the right default for a public grade and the wrong
+one for most other things, and a specification that forces it would be unusable by
+the products this one is meant to serve. `hosted` and `held` remain conformant; what
+changes is what a verifier may claim about them (§8.4).
+
+### 8.3 Retrieved bytes MUST be checked
+
+A verifier MUST recompute `signingInput` over the retrieved envelope and compare it
+to the anchored digest **before** using any part of it, whatever the profile.
+
+This is not belt-and-braces. Delivered bytes are not necessarily stored bytes: a CDN,
+a proxy, a gateway, or a compressing intermediary can alter a response in transit
+without any party acting maliciously. Retrieval over HTTP has been observed returning
+bytes that differ from what was inscribed. An unchecked fetch reintroduces exactly the
+trust in an operator that §7.1 removes.
+
+A mismatch MUST yield `indeterminate`, never `invalid` — the envelope may be intact at
+its source and wrong only in this copy.
+
+### 8.4 Retrieval affects what a verdict may claim
+
+The tiers in §7.2 describe how strongly an attestation is signed. They say nothing
+about whether it can still be read, and for a transferable item that is the binding
+property. A verdict therefore carries retrieval alongside assurance:
+
+```jsonc
+"retrieval": "inscribed" | "hosted" | "held" | "unavailable"
+```
+
+- A verifier MUST report the profile it actually used, not the one declared.
+- `capture-bound` combined with `hosted` is an honest and useful verdict. It says the
+  grade is bound to a physical capture *and* that reading it later depends on the
+  issuer. A marketplace pricing durability needs both halves.
+- An envelope that cannot be retrieved yields `indeterminate` with
+  `retrieval: "unavailable"`, never `invalid`. Absence of a document is not evidence
+  against it.
+
+### 8.5 References SHOULD carry locators
+
+Where a referenced envelope (§2, §4) is `inscribed`, its `EnvelopeReference` SHOULD
+carry the outpoint as well as the hash:
+
+```jsonc
+{ "type": "Capture", "face": "front", "hash": "sha256:…", "ref": "<txid>o<index>" }
+```
+
+The hash remains the binding commitment; the locator is a convenience. With it, the
+capture-binding chain of §4 is traversable from chain data alone, so a verifier can
+confirm that a grade's captures exist and match without asking any service to resolve
+them. Without it, the binding is still sound but checking it needs an index.
+
+---
+
+## 9. Conformance
 
 An implementation is conformant when it reproduces every case in `vectors/`.
 

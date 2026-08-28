@@ -112,7 +112,7 @@ conformant canonicalizer cannot depend on the order it receives.
 ## Adding a vector
 
 Vectors are additive. Changing an existing case's `expected` is a wire-format change
-and requires an envelope version bump (SPEC §8).
+and requires an envelope version bump (SPEC §9).
 
 Add the case to the generator, regenerate, and check that the hand-written assertions
 in `test/reference.test.mjs` still hold. Those assertions are written from RFC 8785 and
