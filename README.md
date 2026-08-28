@@ -31,12 +31,16 @@ npm run check:estate
 
 | Implementation | Then | Now | Notes |
 |---|---|---|---|
-| `bsv/lib/util/jcs.js` | 11/11, private | **11/11, public** | `@smartledger/bsv/jcs` from 9.2.0 |
+| `@smartledger/bsv/jcs` | 11/11, private | **11/11, published** | public from 9.2.0, on npm |
 | `LTP.Claim.canonicalize(…, JCS)` | did not exist | **11/11** | opt-in; becomes the default in 10.0.0 |
 | `LTP.Claim.canonicalize(…, LEGACY)` | 8/11, the only option | 8/11, opt-in | non-conformant by design, kept so existing claim hashes still reproduce |
-| `@smartledger/envelope` | **2/11** | **11/11** | v2.0.0; v1 envelopes still verify byte for byte |
-| `vg-csv-sign-server/canonical.js` | 8/11 | 8/11, pinned | migration blocked on three conditions, documented in that file's header |
+| `@smartledger/envelope` | **2/11** | **11/11, published** | v2.0.0 on npm; v1 envelopes still verify byte for byte |
+| `vg-csv-sign-server/canonical.js` | 8/11 | 8/11, pinned | migration blocked on the conditions in that file's header |
 | `notaryhash/src/canonical/jcs.ts` | conformant | conformant | TypeScript source; checked by its own suite |
+
+Verified against the published tarballs, not the working tree — `@smartledger/bsv@9.2.0`
+and `@smartledger/envelope@2.0.0` both score 11/11 from a clean-room install and
+produce byte-identical output to each other.
 
 `@smartledger/envelope` scored 2/11 because it signed
 `JSON.stringify({ payload, meta })` with no canonicalization at all. That made a
@@ -50,6 +54,15 @@ The two implementations still scoring 8/11 are deliberate and marked as such: bo
 are reachable only by explicit opt-in, both are needed so existing hashes still
 reproduce, and `check:estate` fails the build only for implementations that are
 supposed to be conformant.
+
+### Upgrade order matters
+
+`@smartledger/envelope` v2 verifies v1 envelopes, so nothing already signed needs
+re-signing. **A deployed v1 verifier cannot read a v2 envelope** — v1 has no version
+switch, so it cannot be taught to. Upgrading a signing service before its verifiers
+produces envelopes those verifiers reject.
+
+Upgrade verifiers first, then signers.
 
 ## Use
 
