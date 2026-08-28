@@ -69,11 +69,13 @@ const IMPLEMENTATIONS = [
     },
   },
   {
-    name: '@smartledger/envelope — src/jcs.ts (built)',
-    path: 'lumenkeys/packages/envelope/dist/esm/jcs.js',
+    // Resolved from node_modules rather than a workspace build path: this checks
+    // what a consumer actually installs, which is the thing that has to be right.
+    name: '@smartledger/envelope — canonicalize (installed)',
+    resolve: () => createRequire(import.meta.url).resolve('@smartledger/envelope'),
     mustPass: true,
-    hint: 'run `npm run build` in packages/envelope',
-    load: async (p) => (await import(pathToFileURL(p).href)).canonicalize,
+    hint: 'npm install @smartledger/envelope',
+    load: (p) => createRequire(import.meta.url)(p).canonicalize,
   },
   {
     name: 'notaryhash — src/canonical/jcs.ts (source, not built)',
@@ -129,9 +131,14 @@ function score(fn) {
 const results = [];
 
 for (const impl of IMPLEMENTATIONS) {
-  const full = join(root, impl.path);
-  if (!existsSync(full)) {
-    results.push({ impl, status: 'missing', detail: impl.hint || full });
+  let full;
+  if (impl.resolve) {
+    try { full = impl.resolve(); } catch { full = null; }
+  } else {
+    full = join(root, impl.path);
+  }
+  if (!full || !existsSync(full)) {
+    results.push({ impl, status: 'missing', detail: impl.hint || impl.path || 'not resolvable' });
     continue;
   }
   let fn;

@@ -11,8 +11,8 @@ const cases = [
    "Same defect one level down, where it is easier to miss in review.",
    { "set": { "10": "x", "9": "y", "1": "z" }, "name": "n" }],
 
-  ["vg-set-map-keyed-by-card-number",
-   "How this reaches Verified Grades in practice: any map keyed by card number, set number, slot index or year.",
+  ["map-keyed-by-number",
+   "How this reaches a real payload: any map keyed by a number — an item number, a set number, a slot index, a year.",
    { "setId": "base-1999", "cards": { "10": { "grade": 9.5 }, "2": { "grade": 8 }, "1": { "grade": 10 } } }],
 
   ["array-order-preserved",

@@ -31,8 +31,8 @@
       "legacyDiffers": true
     },
     {
-      "name": "vg-set-map-keyed-by-card-number",
-      "note": "How this reaches Verified Grades in practice: any map keyed by card number, set number, slot index or year.",
+      "name": "map-keyed-by-number",
+      "note": "How this reaches a real payload: any map keyed by a number — an item number, a set number, a slot index, a year.",
       "input": {
         "setId": "base-1999",
         "cards": {
