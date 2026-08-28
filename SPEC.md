@@ -263,6 +263,7 @@ and MUST NOT substitute the current tip height.
   "verdict":    "valid" | "invalid" | "unconfirmed" | "indeterminate",
   "assurance":  "capture-bound" | "signed-multi" | "legacy-single-key",
   "retrieval":  "inscribed" | "hosted" | "held" | "unavailable",   // §8.4
+  "binding":    "checked" | "unchecked" | "absent",                // §8.7
   "height":     838900,
   "chain":      [ { "role": "kiosk", "did": "…", "validAtHeight": true } ],
   "references": { "captures": "matched" },
@@ -297,6 +298,13 @@ verdict, yet could be unable to get the envelope without one.
 This section closes that. It was raised against a real case — a graded trading card
 is a bearer instrument, and the holder who taps its chip in five years must be able
 to verify it whether or not the issuer still exists.
+
+Serving that case takes four things, and each of the last three was found missing
+after the one before it was written: the envelope must be *obtainable* (§8.1–8.2),
+what arrives must be *checked* (§8.3), the holder must be able to *find* it starting
+from the thing they hold (§8.6), and it must be *bound* to that thing rather than to
+some other (§8.7). A deployment missing any one of them has a guarantee that reads
+well and does not hold.
 
 ### 8.1 The anchored digest is not enough
 
@@ -411,6 +419,11 @@ property. A verdict therefore carries retrieval alongside assurance:
 ```
 
 - A verifier MUST report the profile it actually used, not the one declared.
+- **Discovery counts.** A retrieval that required an operator-controlled step at any
+  point — finding the envelope, not only fetching it — is `hosted`, whatever the
+  declaration says and wherever the bytes finally came from. An envelope inscribed on
+  chain but locatable only through the issuer's resolver is `hosted`: the dependency
+  on the issuer is unchanged by where the bytes live.
 - `capture-bound` combined with `hosted` is an honest and useful verdict. It says the
   grade is bound to a physical capture *and* that reading it later depends on the
   issuer. A marketplace pricing durability needs both halves.
@@ -432,6 +445,72 @@ The hash remains the binding commitment; the locator is a convenience. With it, 
 capture-binding chain of §4 is traversable from chain data alone, so a verifier can
 confirm that a grade's captures exist and match without asking any service to resolve
 them. Without it, the binding is still sound but checking it needs an index.
+
+### 8.6 Reaching the envelope from the attested thing
+
+§8.5 gives locators from one envelope to another. That is not enough for the case
+§8 exists to serve. A holder does not begin with an envelope; they begin with the
+thing in their hand — a slab, a document, a device — and need a path from it to the
+envelope about it.
+
+Nothing above provided one, and §8.2's own-satoshi recommendation removed the
+mechanism an implementer would otherwise have fallen into: inscribing the envelope
+onto the item's own satoshi made discovery implicit, by walking the lineage. That
+approach has the rendering hazard §8.2 describes, so the recommendation stands — but
+it withdrew an unstated discovery path without supplying one.
+
+**Where an attestation concerns a transferable thing, the path from that thing to its
+envelope MUST be followable by the holder without the issuer, or the deployment MUST
+NOT claim the `inscribed` profile.** By §8.4 it is `hosted`, and honestly so: an
+envelope on chain that can only be found by asking the issuer leaves the holder as
+dependent as one stored on the issuer's disk.
+
+This specification does not define what a thing is, so it does not define the
+mechanism. What it requires is that the mechanism exist and not route through the
+issuer.
+
+*Non-normative.* The ordering that makes this work without any index or new primitive
+is to **inscribe the envelope first, then create the item carrying the envelope's
+outpoint**. The obvious ordering is blocked by a forward reference — an item cannot
+cite an envelope that does not exist, and an envelope's txid depends on its own
+content — and that disappears when the item is the later of the two. The item then
+carries `{ txid, vout }`, the same structure as §8.5, and the holder needs nothing
+but the chain. It composes with §4: captures inscribed first, the grade referencing
+them, the item referencing the grade.
+
+### 8.7 The envelope MUST bind to the thing
+
+A pointer from a thing to an envelope is not authenticated by existing. Whoever
+creates the thing chooses what it points at, and can point it at somebody else's
+valid envelope.
+
+Consider a forged item citing the outpoint of a genuine, correctly signed, properly
+anchored envelope describing a *different* item. Every check in this specification
+passes: the signatures verify, the chain is authorized at height, the retrieval is
+`inscribed`. The verdict would be `valid` and entirely wrong.
+
+The payload MUST therefore carry a binding to the thing it describes that the holder
+can check against the thing itself — a commitment to a serial number, a chip UID, a
+physical measurement. `uid_commitment` in the Verified Grades payload is one: the
+holder reads the tag and recomputes it.
+
+This does not make the payload legible to this layer. §2 keeps it opaque, and that
+still holds: the requirement is that a binding be present and that the verifier say
+whether it was checked. What form it takes, and how it is checked against the thing,
+belong to the application — which is the only party that knows what the thing is.
+
+A verifier MUST report whether it checked that binding:
+
+```jsonc
+"binding": "checked" | "unchecked" | "absent"
+```
+
+`unchecked` is the correct and expected answer for a remote verifier, which does not
+have the thing in front of it — a marketplace can confirm the envelope is genuine and
+authorized while being unable to confirm it describes the item in the listing, and
+should say so rather than imply otherwise. `absent` means the payload carries no
+binding at all, and a verdict of `valid` alongside it claims far less than it appears
+to: that some authorized envelope exists, not that it is about this thing.
 
 ---
 
