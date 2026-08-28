@@ -306,6 +306,10 @@ from the thing they hold (§8.6), and it must be *bound* to that thing rather th
 some other (§8.7). A deployment missing any one of them has a guarantee that reads
 well and does not hold.
 
+All four together still yield only integrity. Authenticity comes from the certificate
+chain of §5, and §8.8 is explicit about that, because a chain that traverses cleanly
+is persuasive in a way that has nothing to do with whether it is signed.
+
 ### 8.1 The anchored digest is not enough
 
 An anchor proves a document existed and was authorized. It does not produce the
@@ -313,16 +317,29 @@ document. Any deployment where the envelope is reachable only from the issuer ha
 authorization that survives the issuer and content that does not, which for a
 transferable item is the same as no guarantee at all.
 
-Every envelope MUST therefore declare how it can be retrieved:
+Every envelope MUST therefore declare **how** it can be retrieved:
 
 ```jsonc
-"retrieval": {
-  "profile": "inscribed",                       // §8.2
-  "ref": { "txid": "…", "vout": 0 }             // profile-specific locator
-}
+"retrieval": { "profile": "inscribed" }                          // §8.2
+"retrieval": { "profile": "hosted", "ref": "https://…" }
+"retrieval": { "profile": "held" }
 ```
 
-For `inscribed`, the locator is an outpoint carried as a **structured pair**, not a
+`profile` is REQUIRED. `ref` is REQUIRED for `hosted`, and MUST be absent for
+`inscribed` and `held`.
+
+An earlier draft required `ref` on every profile. For `inscribed` that is
+**unsatisfiable**: the locator is the envelope's own outpoint, which cannot be known
+until the envelope is inscribed, and writing it in changes the bytes and therefore the
+txid. There is no fixed point.
+
+It would also be useless if it existed. A self-locator can only be read by someone who
+already holds the envelope, so it can never bootstrap retrieval. For `inscribed` the
+locator that does the work is always in whatever pointed you here — the referring
+envelope (§8.5), or the thing itself (§8.6). An envelope declares its profile; other
+documents say where it is.
+
+Where a locator does appear, an outpoint is carried as a **structured pair**, not a
 string. Earlier drafts wrote `<txid>o<index>` — a separator this document invented.
 Measured against a real inscription on the two gateways serving BSV ordinals today:
 
@@ -343,11 +360,11 @@ is a rendering detail, not part of the format.
 
 ### 8.2 Profiles
 
-| Profile | Locator | The envelope is obtainable | Suitable for |
-| --- | --- | --- | --- |
-| `inscribed` | outpoint | by anyone, from any chain gateway, permanently | bearer instruments |
-| `hosted` | URL | while the issuer serves it | records with a custodian |
-| `held` | none | by whoever was given a copy | private attestations |
+| Profile | Located by | `ref` in this envelope | The envelope is obtainable | Suitable for |
+| --- | --- | --- | --- | --- |
+| `inscribed` | an outpoint, held by the referrer | absent (§8.1) | by anyone, from any chain gateway, permanently | bearer instruments |
+| `hosted` | a URL | REQUIRED | while the issuer serves it | records with a custodian |
+| `held` | out of band | absent | by whoever was given a copy | private attestations |
 
 `inscribed` means the envelope is written to the chain at its own outpoint. This is
 not a contradiction of §3.1: *off-chain* there distinguishes the envelope from the
@@ -482,6 +499,30 @@ capture-binding chain of §4 is traversable from chain data alone, so a verifier
 confirm that a grade's captures exist and match without asking any service to resolve
 them. Without it, the binding is still sound but checking it needs an index.
 
+**The locator is inside the signed bytes, so it constrains when you may sign.**
+`references` is part of `signingInput` (§2.1). A locator therefore cannot be attached
+after signing: a referencing envelope MUST NOT be signed until its referents are
+inscribed and their outpoints known.
+
+This is worth stating because the natural implementation gets it backwards. Signing a
+grade when the grade is produced and attaching locators later is the obvious order,
+and it silently yields envelopes whose signatures do not verify — the two
+`signingInput` values differ, and nothing complains until a verifier says so. The
+working order is: capture, inscribe the captures, *then* sign the grade, then inscribe
+it.
+
+It costs nothing, because §4 already requires captures to be anchored at or before
+the grade that references them. The constraint composes with an ordering that was
+mandatory anyway.
+
+*Why the locator is signed rather than left outside.* Excluding it would remove the
+constraint, and a tampered locator would be caught by §8.3's hash check regardless —
+so this was a real choice, not an oversight. It is signed because the alternative buys
+an ordering freedom that §4 forecloses anyway, while costing a change to `signingInput`
+semantics and therefore an envelope version bump (§9). Keeping it signed also means a
+verifier that trusts the locator before fetching is trusting something the issuer
+committed to, which is a smaller leap.
+
 ### 8.6 Reaching the envelope from the attested thing
 
 §8.5 gives locators from one envelope to another. That is not enough for the case
@@ -552,6 +593,29 @@ authorized while being unable to confirm it describes the item in the listing, a
 should say so rather than imply otherwise. `absent` means the payload carries no
 binding at all, and a verdict of `valid` alongside it claims far less than it appears
 to: that some authorized envelope exists, not that it is about this thing.
+
+### 8.8 What retrieval does not give you
+
+Everything in §8 concerns integrity and reachability. None of it establishes
+**authenticity**, and the distinction is easy to lose because a fully traversable
+chain feels conclusive.
+
+A verifier can start from one outpoint, walk item → grade → captures → images, and
+hash-check every body against the commitment that pointed at it. That proves the
+documents are the ones committed to and that nobody altered them in transit. It says
+nothing about who made them. A DID is a hash, so a public key is not recoverable from
+it; without the certificate chain of §5 there is no key to check a signature against.
+
+This has been demonstrated rather than argued. A six-inscription chain built with the
+reference implementation and walked from a single outpoint passed 18 of 18 integrity
+checks and verified zero signatures, because the envelopes carried no certificates.
+That is the exact shape of the gap: every hash checks, and a verifier still cannot
+tell you who produced any of it.
+
+An implementation that walks the chain and reports success without §5 is reporting
+that the bytes are intact — a real property, and not the one a holder is asking about.
+Verdicts MUST NOT present integrity as authenticity: a chain that traverses cleanly
+with no verifiable certificate is `indeterminate`, not `valid`.
 
 ---
 
