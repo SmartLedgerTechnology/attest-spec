@@ -14,6 +14,20 @@ without asking us anything.
 Zero dependencies, by design. Every package in the estate depends on this one, so it
 can depend on none of them.
 
+## What the vectors depend on
+
+`SPEC.md` is a normative document that is still being edited, and it ships in this
+package. The vectors do not move with all of it:
+
+- `vectors/canonical.json` (version 1) depends only on RFC 8785.
+- `vectors/signing-input.json` (version 1) depends on `SPEC.md` §2.1 and RFC 8785.
+
+Both were checked against the reference implementation at commit `3612abc` of this
+repository (41 tests, `npm run check:reference` conformant). Edits to other sections
+of `SPEC.md` do not change them. A change to §2.1 should come with a new
+`version` in `signing-input.json`, so a consumer can tell whether their vectors and
+their spec text agree.
+
 ## Why this exists
 
 A signature is only meaningful over bytes both parties can reproduce. When this
