@@ -24,9 +24,11 @@ package. The vectors do not move with all of it:
 
 Both were checked against the reference implementation at commit `3612abc` of this
 repository (41 tests, `npm run check:reference` conformant). Edits to other sections
-of `SPEC.md` do not change them. A change to §2.1 should come with a new
-`version` in `signing-input.json`, so a consumer can tell whether their vectors and
-their spec text agree.
+of `SPEC.md` do not change them. The `version` and `spec` fields in each vector file are informational. They record which
+version of the vectors this is and what it was derived from; nothing in `runner.mjs`
+reads them or checks a consumer's copy of `SPEC.md` against them. A change to §2.1
+should come with a new `version` in `signing-input.json`, by the maintainers' discipline
+and not because a tool enforces it.
 
 ## Why this exists
 
